@@ -1,73 +1,129 @@
-# Welcome to your Lovable project
+# Response Hub - Adverse News Search Application
 
-## Project info
+## Project Overview
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+Response Hub is a React-based application for managing and searching adverse news records. The application integrates with an external Adverse News Extraction API to perform searches and display results.
 
-## How can I edit this code?
+## Features
 
-There are several ways of editing your application.
+- **User Authentication**: Secure login and session management
+- **Adverse News Search**: Search for adverse news using name parameters
+- **Search Management**: View, filter, and manage search records
+- **Real-time Results**: Display search results with relevance scores
+- **Responsive UI**: Modern interface built with shadcn-ui and Tailwind CSS
 
-**Use Lovable**
+## API Integration
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+The application integrates with the **Adverse News Extraction API** (http://localhost:8000/) with the following endpoints:
 
-Changes made via Lovable will be committed automatically to this repo.
+### Available Endpoints
+- `POST /api/v1/adverse-news/search` - Initiate a new adverse news search
+- `GET /api/v1/adverse-news/searches` - Retrieve list of searches with pagination
+- `GET /api/v1/adverse-news/search/{id}` - Get detailed search results by ID
 
-**Use your preferred IDE**
+### API Client
+The API integration is implemented in [`src/integrations/adverse-news-api/client.ts`](src/integrations/adverse-news-api/client.ts) with:
+- Type-safe request/response interfaces
+- Error handling
+- Data transformation utilities
+- Singleton client instance
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+## Project Structure
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+```
+src/
+├── components/           # Reusable UI components
+├── contexts/            # React contexts (Auth, Search)
+├── integrations/        # API clients
+│   ├── adverse-news-api/ # External API integration
+│   └── supabase/        # Supabase integration
+├── pages/               # Application pages
+├── types/               # TypeScript type definitions
+└── lib/                 # Utility functions
+```
 
-Follow these steps:
+## Getting Started
+
+### Prerequisites
+- Node.js 18+ and npm
+- External Adverse News API running on http://localhost:8000/
+
+### Installation
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
+# Clone the repository
 git clone <YOUR_GIT_URL>
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+# Navigate to the project directory
+cd response-hub
 
-# Step 3: Install the necessary dependencies.
-npm i
+# Install dependencies
+npm install
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# Start the development server
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+### Environment Variables
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+Create a `.env` file with the following variables:
 
-**Use GitHub Codespaces**
+```env
+# Supabase Configuration
+VITE_SUPABASE_URL=your_supabase_url
+VITE_SUPABASE_PUBLISHABLE_KEY=your_supabase_key
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+# External API (optional - defaults to http://localhost:8000/)
+VITE_ADVERSE_NEWS_API_URL=http://localhost:8000
+```
 
-## What technologies are used for this project?
+## Development
 
-This project is built with:
+### Available Scripts
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+- `npm run dev` - Start development server
+- `npm run build` - Build for production
+- `npm run lint` - Run ESLint
+- `npm run preview` - Preview production build
 
-## How can I deploy this project?
+### Key Components
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+1. **SearchContext** ([`src/contexts/SearchContext.tsx`](src/contexts/SearchContext.tsx)) - Manages search state and API interactions
+2. **SearchTable** ([`src/components/SearchTable.tsx`](src/components/SearchTable.tsx)) - Displays search records with pagination
+3. **RecordDetailsSheet** ([`src/components/RecordDetailsSheet.tsx`](src/components/RecordDetailsSheet.tsx)) - Shows detailed search results
+4. **AddSearchDialog** ([`src/components/AddSearchDialog.tsx`](src/components/AddSearchDialog.tsx)) - Form for initiating new searches
 
-## Can I connect a custom domain to my Lovable project?
+## API Usage Example
 
-Yes, you can!
+```typescript
+import { adverseNewsApi } from '@/integrations/adverse-news-api/client';
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+// Initiate a search
+const response = await adverseNewsApi.searchAdverseNews({
+  surname: 'Smith',
+  given_name: 'John',
+  other_name: 'Doe'
+});
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+// Get search results
+const results = await adverseNewsApi.getSearchResultById(response.id);
+
+// List searches with pagination
+const searches = await adverseNewsApi.getSearches({
+  page: 1,
+  limit: 10
+});
+```
+
+## Technologies Used
+
+- **Frontend**: React 18, TypeScript, Vite
+- **UI Framework**: shadcn-ui, Tailwind CSS
+- **State Management**: React Context, React Query
+- **API Integration**: Fetch API with TypeScript interfaces
+- **Routing**: React Router DOM
+- **Authentication**: Supabase Auth
+
+## License
+
+This project is part of the Lovable platform.

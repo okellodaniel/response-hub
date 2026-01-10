@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react';
 import { useSearch } from '@/contexts/SearchContext';
 import { format } from 'date-fns';
 import LoadingSpinner from './LoadingSpinner';
@@ -17,7 +17,7 @@ import LoadingSpinner from './LoadingSpinner';
 const ITEMS_PER_PAGE = 5;
 
 const SearchTable = () => {
-  const { records, setSelectedRecord, isSearching } = useSearch();
+  const { records, setSelectedRecord, isSearching, refreshRecords, isLoading } = useSearch();
   const [currentPage, setCurrentPage] = useState(1);
 
   const totalPages = Math.ceil(records.length / ITEMS_PER_PAGE);
@@ -29,6 +29,15 @@ const SearchTable = () => {
     completed: 'bg-success/10 text-success border-success/20',
     error: 'bg-destructive/10 text-destructive border-destructive/20',
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 text-center">
+        <LoadingSpinner size="lg" />
+        <p className="text-muted-foreground mt-4">Loading search records...</p>
+      </div>
+    );
+  }
 
   if (records.length === 0) {
     return (
@@ -52,12 +61,33 @@ const SearchTable = () => {
         <p className="text-muted-foreground mt-1">
           Click "Add Search" to create your first search record.
         </p>
+        <Button
+          variant="outline"
+          className="mt-4"
+          onClick={refreshRecords}
+        >
+          <RefreshCw className="w-4 h-4 mr-2" />
+          Refresh
+        </Button>
       </div>
     );
   }
 
   return (
     <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-semibold">Search Records</h2>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={refreshRecords}
+          disabled={isLoading}
+        >
+          <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+          Refresh
+        </Button>
+      </div>
+
       <div className="rounded-lg border bg-card overflow-hidden">
         <Table>
           <TableHeader>
@@ -79,14 +109,14 @@ const SearchTable = () => {
                 <TableCell>{record.givenName}</TableCell>
                 <TableCell>
                   <Badge variant="outline" className={statusColors[record.status]}>
-                    {record.status === 'pending' && isSearching && (
+                    {record.status === 'pending' && (
                       <LoadingSpinner size="sm" className="mr-1.5" />
                     )}
                     {record.status.charAt(0).toUpperCase() + record.status.slice(1)}
                   </Badge>
                 </TableCell>
                 <TableCell className="text-muted-foreground">
-                  {format(new Date(record.createdAt), 'MMM d, yyyy')}
+                  {format(new Date(record.createdAt), 'MMM d, yyyy HH:mm')}
                 </TableCell>
               </TableRow>
             ))}
