@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
+import { ZoomIn, ZoomOut, X, Maximize2 } from 'lucide-react';
 import {
   Sheet,
   SheetContent,
@@ -43,13 +44,26 @@ interface RiskAssessment {
   regulatory_risk?: { score: string; reason: string };
 }
 
+interface Summary {
+  brief_summary?: string;
+  key_facts?: string[];
+  timeline?: string;
+}
+
 const RecordDetailsSheet = () => {
   const { selectedRecord, setSelectedRecord } = useSearch();
   const [detailedRecord, setDetailedRecord] = useState<ApiSearchItem | null>(null);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [imageError, setImageError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [imageLoading, setImageLoading] = useState(false);
   const [isImageExpanded, setIsImageExpanded] = useState(false);
+  const [zoom, setZoom] = useState(1);
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const containerRef = useRef<HTMLDivElement>(null);
+  const currentImageUrlRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (selectedRecord) {
@@ -75,30 +89,108 @@ const RecordDetailsSheet = () => {
     if (detailedRecord?.image_id) {
       const fetchImage = async () => {
         setImageLoading(true);
+        setImageError(null);
         try {
           const url = await adverseNewsApi.getImageById(detailedRecord.image_id);
+
+          // Clean up previous image URL if it exists
+          if (currentImageUrlRef.current) {
+            URL.revokeObjectURL(currentImageUrlRef.current);
+          }
+
+          currentImageUrlRef.current = url;
           setImageUrl(url);
         } catch (error) {
           console.error('Failed to fetch image:', error);
+          setImageError('Failed to load image. The image may not be available.');
           setImageUrl(null);
+          if (currentImageUrlRef.current) {
+            URL.revokeObjectURL(currentImageUrlRef.current);
+            currentImageUrlRef.current = null;
+          }
         } finally {
           setImageLoading(false);
         }
       };
       fetchImage();
     } else {
+      // Clean up if no image_id
+      if (currentImageUrlRef.current) {
+        URL.revokeObjectURL(currentImageUrlRef.current);
+        currentImageUrlRef.current = null;
+      }
       setImageUrl(null);
+      setImageError(null);
     }
   }, [detailedRecord]);
 
-  // Cleanup image URL on unmount
+  // Cleanup image URL on component unmount
   useEffect(() => {
     return () => {
-      if (imageUrl) {
-        URL.revokeObjectURL(imageUrl);
+      if (currentImageUrlRef.current) {
+        URL.revokeObjectURL(currentImageUrlRef.current);
+        currentImageUrlRef.current = null;
       }
     };
-  }, [imageUrl]);
+  }, []);
+
+  // Zoom and drag handlers
+  const handleWheel = useCallback((e: React.WheelEvent) => {
+    e.preventDefault();
+    const delta = e.deltaY > 0 ? -0.1 : 0.1;
+    setZoom((prev) => Math.max(0.5, Math.min(5, prev + delta)));
+  }, []);
+
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    if (e.button !== 0) return; // left click only
+    setIsDragging(true);
+    setDragStart({ x: e.clientX - position.x, y: e.clientY - position.y });
+  }, [position]);
+
+  const handleMouseMove = useCallback((e: MouseEvent) => {
+    if (!isDragging) return;
+    setPosition({
+      x: e.clientX - dragStart.x,
+      y: e.clientY - dragStart.y,
+    });
+  }, [isDragging, dragStart]);
+
+  const handleMouseUp = useCallback(() => {
+    setIsDragging(false);
+  }, []);
+
+  const handleZoomIn = useCallback(() => {
+    setZoom((prev) => Math.min(5, prev + 0.25));
+  }, []);
+
+  const handleZoomOut = useCallback(() => {
+    setZoom((prev) => Math.max(0.5, prev - 0.25));
+  }, []);
+
+  const handleReset = useCallback(() => {
+    setZoom(1);
+    setPosition({ x: 0, y: 0 });
+  }, []);
+
+  // Reset zoom and position when dialog closes
+  useEffect(() => {
+    if (!isImageExpanded) {
+      setZoom(1);
+      setPosition({ x: 0, y: 0 });
+    }
+  }, [isImageExpanded]);
+
+  // Attach global mouse move and up listeners
+  useEffect(() => {
+    if (isDragging) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      return () => {
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+      };
+    }
+  }, [isDragging, handleMouseMove, handleMouseUp]);
 
   if (!selectedRecord) return null;
 
@@ -196,6 +288,37 @@ const RecordDetailsSheet = () => {
                         : detailedRecord.created_at?.split('T')[0] || '—'}
                     </p>
                   </div>
+                </div>
+              </div>
+
+              {/* Article Summary */}
+              <div className="space-y-4">
+                <h4 className="font-semibold text-foreground">Article Summary</h4>
+                <div className="p-4 border rounded-lg">
+                  {detailedRecord.summary && typeof detailedRecord.summary === 'object' ? (
+                    <div className="space-y-4">
+                      <div>
+                        <span className="text-xs uppercase tracking-wide text-muted-foreground">Brief Summary</span>
+                        <p className="mt-1 font-medium">{(detailedRecord.summary as Summary).brief_summary || '—'}</p>
+                      </div>
+                      {(detailedRecord.summary as Summary).key_facts && (
+                        <div>
+                          <span className="text-xs uppercase tracking-wide text-muted-foreground">Key Facts</span>
+                          <ul className="mt-1 list-disc list-inside space-y-1">
+                            {(detailedRecord.summary as Summary).key_facts!.map((fact, idx) => (
+                              <li key={idx} className="text-sm">{fact}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      <div>
+                        <span className="text-xs uppercase tracking-wide text-muted-foreground">Timeline</span>
+                        <p className="mt-1 font-medium">{(detailedRecord.summary as Summary).timeline || '—'}</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-muted-foreground">No summary data available.</p>
+                  )}
                 </div>
               </div>
 
@@ -312,6 +435,11 @@ const RecordDetailsSheet = () => {
                   <div className="flex justify-center p-8 border rounded-lg">
                     <LoadingSpinner size="lg" />
                   </div>
+                ) : imageError ? (
+                  <div className="p-8 border rounded-lg text-center">
+                    <p className="text-destructive mb-2">{imageError}</p>
+                    <p className="text-sm text-muted-foreground">The image could not be loaded.</p>
+                  </div>
                 ) : imageUrl ? (
                   <div
                     className="border rounded-lg overflow-hidden cursor-pointer hover:opacity-90 transition-opacity"
@@ -321,6 +449,14 @@ const RecordDetailsSheet = () => {
                       src={imageUrl}
                       alt="Article scan"
                       className="w-full h-auto max-h-96 object-contain"
+                      onError={() => {
+                        setImageError('Failed to load image. The image may be corrupted.');
+                        if (currentImageUrlRef.current) {
+                          URL.revokeObjectURL(currentImageUrlRef.current);
+                          currentImageUrlRef.current = null;
+                        }
+                        setImageUrl(null);
+                      }}
                     />
                   </div>
                 ) : (
@@ -338,17 +474,97 @@ const RecordDetailsSheet = () => {
         </div>
       </SheetContent>
       <Dialog open={isImageExpanded} onOpenChange={setIsImageExpanded}>
-        <DialogContent className="max-w-4xl max-h-[90vh]">
-          <DialogHeader>
-            <DialogTitle>Article Image</DialogTitle>
-          </DialogHeader>
-          {imageUrl && (
-            <div className="flex justify-center p-4">
-              <img
-                src={imageUrl}
-                alt="Article scan (expanded)"
-                className="max-w-full max-h-[70vh] object-contain"
-              />
+        <DialogContent className="max-w-[98vw] max-h-[98vh] w-[98vw] h-[98vh] p-0 bg-black/95 border-0 overflow-hidden">
+          {imageUrl ? (
+            <>
+              {/* Toolbar */}
+              <div className="absolute top-4 left-4 right-4 z-50 flex items-center justify-between bg-black/80 backdrop-blur-sm rounded-lg p-3 text-white">
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleZoomOut}
+                    className="p-2 hover:bg-white/20 rounded transition-colors"
+                    aria-label="Zoom out"
+                    disabled={zoom <= 0.5}
+                  >
+                    <ZoomOut size={20} />
+                  </button>
+                  <span className="text-sm font-medium min-w-[60px] text-center">
+                    {Math.round(zoom * 100)}%
+                  </span>
+                  <button
+                    onClick={handleZoomIn}
+                    className="p-2 hover:bg-white/20 rounded transition-colors"
+                    aria-label="Zoom in"
+                    disabled={zoom >= 5}
+                  >
+                    <ZoomIn size={20} />
+                  </button>
+                  <button
+                    onClick={handleReset}
+                    className="p-2 hover:bg-white/20 rounded ml-2 transition-colors"
+                    aria-label="Reset zoom"
+                  >
+                    <Maximize2 size={20} />
+                  </button>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-white/70 hidden sm:inline">
+                    Drag to pan • Scroll to zoom • Click buttons or use mouse wheel
+                  </span>
+                  <button
+                    onClick={() => setIsImageExpanded(false)}
+                    className="p-2 hover:bg-white/20 rounded ml-4 transition-colors"
+                    aria-label="Close"
+                  >
+                    <X size={20} />
+                  </button>
+                </div>
+              </div>
+              {/* Image container */}
+              <div
+                ref={containerRef}
+                className="w-full h-full overflow-hidden relative flex items-center justify-center p-4"
+                onWheel={handleWheel}
+                onMouseDown={handleMouseDown}
+              >
+                <div
+                  className="absolute"
+                  style={{
+                    transform: `translate(${position.x}px, ${position.y}px) scale(${zoom})`,
+                    transition: isDragging ? 'none' : 'transform 0.1s ease',
+                    cursor: isDragging ? 'grabbing' : 'grab',
+                  }}
+                >
+                  <img
+                    src={imageUrl}
+                    alt="Article scan (expanded)"
+                    className="max-w-full max-h-full object-contain shadow-2xl"
+                    onError={() => {
+                      setIsImageExpanded(false);
+                      setImageError('Failed to load image. The image may be corrupted.');
+                      if (currentImageUrlRef.current) {
+                        URL.revokeObjectURL(currentImageUrlRef.current);
+                        currentImageUrlRef.current = null;
+                      }
+                      setImageUrl(null);
+                    }}
+                  />
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="flex flex-col items-center justify-center h-full p-8 text-white">
+              <X size={48} className="mb-4 text-destructive" />
+              <h3 className="text-xl font-semibold mb-2">Image Not Available</h3>
+              <p className="text-white/70 text-center mb-6">
+                {imageError || 'The image could not be loaded or is no longer available.'}
+              </p>
+              <button
+                onClick={() => setIsImageExpanded(false)}
+                className="px-4 py-2 bg-white/20 hover:bg-white/30 rounded transition-colors"
+              >
+                Close
+              </button>
             </div>
           )}
         </DialogContent>
