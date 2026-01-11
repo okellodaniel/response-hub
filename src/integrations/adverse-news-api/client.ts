@@ -1,6 +1,9 @@
 import { SearchFormData, SearchRecord } from '@/types/search';
 
-const API_BASE_URL = 'http://localhost:8000/api/v1';
+// Use environment variable with fallback for development
+const API_BASE_URL = import.meta.env.VITE_ADVERSE_NEWS_API_URL
+    ? `${import.meta.env.VITE_ADVERSE_NEWS_API_URL}/api/v1`
+    : 'http://localhost:8000/api/v1';
 
 export interface AdverseNewsSearchRequest {
     surname: string;
