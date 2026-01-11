@@ -77,6 +77,59 @@ VITE_SUPABASE_PUBLISHABLE_KEY=your_supabase_key
 VITE_ADVERSE_NEWS_API_URL=http://localhost:8000
 ```
 
+## Docker Deployment
+
+The application can be containerized using Docker for consistent deployment across environments.
+
+### Prerequisites
+- Docker and Docker Compose installed
+
+### Building and Running with Docker
+
+#### Production Build
+```sh
+# Build the Docker image
+docker build -t response-hub:latest .
+
+# Run the container
+docker run -p 8080:80 --env-file .env response-hub:latest
+```
+
+#### Using Docker Compose
+```sh
+# Start production container
+docker-compose up -d app
+
+# Start development container with hot reload
+docker-compose up dev
+
+# View logs
+docker-compose logs -f
+
+# Stop containers
+docker-compose down
+```
+
+#### Development with Docker
+For development with hot reload:
+```sh
+docker-compose up dev
+```
+The application will be available at http://localhost:5173
+
+#### Production with Docker Compose
+```sh
+docker-compose up -d app
+```
+The application will be available at http://localhost:8080
+
+### Docker Configuration Files
+- [`Dockerfile`](Dockerfile) - Production multi-stage build
+- [`Dockerfile.dev`](Dockerfile.dev) - Development build with hot reload
+- [`docker-compose.yml`](docker-compose.yml) - Orchestration for development and production
+- [`nginx.conf`](nginx.conf) - Nginx configuration for serving static files
+- [`.dockerignore`](.dockerignore) - Files to exclude from Docker build context
+
 ## Development
 
 ### Available Scripts
