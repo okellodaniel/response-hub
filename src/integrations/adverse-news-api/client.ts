@@ -6,23 +6,26 @@ const API_BASE_URL = import.meta.env.VITE_ADVERSE_NEWS_API_URL
     : 'http://localhost:8000/api/v1';
 
 export interface AdverseNewsSearchRequest {
-    surname: string;
-    given_name: string;
-    other_name?: string;
+    names: string;
 }
 
-// Interface matching the actual API response for a search item
+// Interface matching the actual API response for a search result article
 export interface ApiSearchItem {
-    id: number;
+    id: string;
     image_id: string;
-    search_query: string;
+    search_query: string | null;
     adverse_news_found: boolean;
     individuals_mentioned: Array<{
+        name: string;
         surname: string;
         givenName: string;
         otherName: string | null;
+        role: string;
+        reason_for_mention: string;
     }> | string; // Can be string or array
     newspaper_metadata: {
+        publication_name: string;
+        publication_date: string;
         newspaper_name: string | null;
         date: string | null;
         page_number: number | null;
@@ -30,19 +33,49 @@ export interface ApiSearchItem {
     } | string;
     article_identification: {
         headline: string;
+        subheadline: string | null;
         sub_headlines: string | null;
     } | string;
     adverse_news_classification: {
-        category: string;
+        adverse_categories: string[];
         severity_level: string;
     } | string;
-    key_adverse_outcomes: Record<string, unknown> | string;
-    summary: Record<string, unknown> | string;
-    risk_assessment: Record<string, unknown> | string;
-    quotes_and_evidence: Record<string, unknown> | string;
-    risk_scoring: Record<string, unknown> | string;
-    relevance_to_query: Record<string, unknown> | string;
-    processing_metadata: Record<string, unknown> | string;
+    key_adverse_outcomes: {
+        primary_impact: string;
+        secondary_effects: string;
+        affected_parties: string;
+        financial_implications: string;
+        legal_consequences: string;
+    } | string;
+    summary: {
+        brief_summary: string;
+        key_facts: string[];
+        timeline: string;
+    } | string;
+    risk_assessment: {
+        reputational_risk: { score: string; reason: string };
+        operational_risk: { score: string; reason: string };
+        regulatory_risk: { score: string; reason: string };
+    } | string;
+    quotes_and_evidence: {
+        key_quotes: string[];
+        supporting_evidence: string[];
+    } | string;
+    risk_scoring: {
+        overall_risk_score: number;
+        financial_risk_score: number;
+        reputational_risk_score: number;
+        legal_risk_score: number;
+        operational_risk_score: number;
+        priority_level: string;
+        recommended_action: string;
+    } | string;
+    relevance_to_query: Record<string, unknown> | string | null;
+    processing_metadata: {
+        processed_at: string;
+        model_used: string;
+        processing_type: string;
+    } | string;
     raw_response: Record<string, unknown> | string;
     headline: string;
     newspaper_name: string | null;
@@ -50,16 +83,14 @@ export interface ApiSearchItem {
     severity_level: string;
     overall_risk_score: number;
     priority_level: string;
-    relevance_score: number;
+    relevance_score: number | null;
     created_at: string;
     updated_at: string | null;
 }
 
 export interface AdverseNewsSearchResponse {
     id: string;
-    surname: string;
-    given_name: string;
-    other_name?: string;
+    names: string;
     created_at: string;
     status: 'pending' | 'completed' | 'error';
     results?: AdverseNewsResult[];
@@ -75,12 +106,46 @@ export interface AdverseNewsResult {
     url: string;
 }
 
+export interface SearchSummary {
+    id: string;
+    image_id: string | null;
+    names: string;
+    adverse_news_found: boolean;
+    results_count: number;
+    top_adverse_news_id: string;
+    adverse_news_ids: string[];
+    created_at: string;
+    search_duration_ms: number;
+}
+
 export interface PaginatedSearchesResponse {
-    items: ApiSearchItem[];
+    items: SearchSummary[];
     total: number;
     page: number;
     limit: number;
     total_pages: number;
+}
+
+// Interface for search result wrapper (GET /adversenews/searches/{id})
+export interface SearchResultResponse {
+    query: string;
+    names: string;
+    total_hits: number;
+    search_id: string;
+    search_duration_ms: number;
+    timestamp: string;
+    results: ApiSearchItem[];
+}
+
+// New interface for the updated search API response (POST /adversenews/searches)
+export interface AdverseNewsSearchResponseV2 {
+    query: string;
+    names: string;
+    total_hits: number;
+    search_id: string;
+    search_duration_ms: number;
+    timestamp: string;
+    results: ApiSearchItem[];
 }
 
 class AdverseNewsApiClient {
@@ -111,29 +176,34 @@ class AdverseNewsApiClient {
         return response.json();
     }
 
-    // Search adverse news - returns array of search results
-    async searchAdverseNews(data: AdverseNewsSearchRequest): Promise<ApiSearchItem[]> {
-        return this.request<ApiSearchItem[]>('/adverse-news/search', {
-            method: 'POST',
-            body: JSON.stringify(data),
-        });
+    // Search adverse news - returns search response with metadata and results
+    async searchAdverseNews(data: AdverseNewsSearchRequest): Promise<AdverseNewsSearchResponseV2> {
+        try {
+            const response = await this.request<AdverseNewsSearchResponseV2>('/adversenews/searches', {
+                method: 'POST',
+                body: JSON.stringify(data),
+            });
+            console.log('Search API response:', response);
+            return response;
+        } catch (error) {
+            console.error('Search API error:', error);
+            throw error;
+        }
     }
 
     // Get list of searches
     async getSearches(params?: {
-        surname?: string;
-        given_name?: string;
+        names?: string;
         page?: number;
         limit?: number;
     }): Promise<PaginatedSearchesResponse> {
         const queryParams = new URLSearchParams();
-        if (params?.surname) queryParams.append('surname', params.surname);
-        if (params?.given_name) queryParams.append('given_name', params.given_name);
+        if (params?.names) queryParams.append('names', params.names);
         if (params?.page) queryParams.append('page', params.page.toString());
         if (params?.limit) queryParams.append('limit', params.limit.toString());
 
         const queryString = queryParams.toString();
-        const endpoint = `/adverse-news/searches${queryString ? `?${queryString}` : ''}`;
+        const endpoint = `/adversenews/searches${queryString ? `?${queryString}` : ''}`;
 
         return this.request<PaginatedSearchesResponse>(endpoint, {
             method: 'GET',
@@ -141,8 +211,8 @@ class AdverseNewsApiClient {
     }
 
     // Get search result by ID
-    async getSearchResultById(id: string): Promise<ApiSearchItem> {
-        return this.request<ApiSearchItem>(`/adverse-news/search/${id}`, {
+    async getSearchResultById(id: string): Promise<SearchResultResponse> {
+        return this.request<SearchResultResponse>(`/adversenews/searches/${id}`, {
             method: 'GET',
         });
     }
@@ -167,9 +237,7 @@ class AdverseNewsApiClient {
     // Convert SearchFormData to AdverseNewsSearchRequest
     convertSearchFormData(data: SearchFormData): AdverseNewsSearchRequest {
         return {
-            surname: data.surname,
-            given_name: data.givenName,
-            other_name: data.otherName || undefined,
+            names: data.names,
         };
     }
 
@@ -207,23 +275,43 @@ class AdverseNewsApiClient {
         };
     }
 
-    // Convert ApiSearchItem to SearchRecord
-    convertToSearchRecord(item: ApiSearchItem): SearchRecord {
-        const names = this.extractNamesFromSearchItem(item);
+    // Convert SearchSummary to SearchRecord
+    convertToSearchRecord(item: SearchSummary): SearchRecord {
+        // Determine status based on adverse_news_found
+        let status: 'pending' | 'completed' | 'error' = 'completed';
+        if (!item.adverse_news_found) {
+            status = 'pending';
+        }
+        // No error detection from SearchSummary, keep as completed
+
+        return {
+            id: item.id,
+            names: item.names,
+            createdAt: new Date(item.created_at),
+            status,
+        };
+    }
+
+    // Convert ApiSearchItem to SearchRecord (for backward compatibility)
+    convertApiSearchItemToSearchRecord(item: ApiSearchItem): SearchRecord {
+        const extractedNames = this.extractNamesFromSearchItem(item);
 
         // Determine status based on adverse_news_found and processing
         let status: 'pending' | 'completed' | 'error' = 'completed';
-        if (!item.adverse_news_found && item.relevance_score === 0) {
+        if (!item.adverse_news_found && (item.relevance_score === 0 || item.relevance_score === null)) {
             status = 'pending';
         } else if (item.severity_level === 'Error' || item.priority_level === 'ERROR') {
             status = 'error';
         }
 
+        // Combine extracted names into a single string
+        const names = [extractedNames.givenName, extractedNames.surname, extractedNames.otherName]
+            .filter(n => n)
+            .join(' ');
+
         return {
-            id: item.id.toString(),
-            surname: names.surname,
-            givenName: names.givenName,
-            otherName: names.otherName,
+            id: item.id,
+            names: names || 'Unknown',
             createdAt: new Date(item.created_at),
             status,
         };
@@ -247,13 +335,15 @@ class AdverseNewsApiClient {
             summaryText = summaryObj.brief_summary || 'No summary available';
         }
 
+        const relevanceScore = item.relevance_score !== null ? item.relevance_score / 10 : 0;
+
         return [{
-            id: item.id.toString(),
+            id: item.id,
             title: item.headline || 'No headline',
             source: item.newspaper_name || 'Unknown source',
             date: item.created_at.split('T')[0],
             summary: summaryText,
-            relevance_score: item.relevance_score / 10, // Convert from 0-10 to 0-1 scale
+            relevance_score: relevanceScore,
             url: '#', // No URL in API response
         }];
     }

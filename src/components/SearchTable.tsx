@@ -14,7 +14,7 @@ import { useSearch } from '@/contexts/SearchContext';
 import { format } from 'date-fns';
 import LoadingSpinner from './LoadingSpinner';
 
-const ITEMS_PER_PAGE = 5;
+const ITEMS_PER_PAGE = 10;
 
 const SearchTable = () => {
   const { records, setSelectedRecord, isSearching, refreshRecords, isLoading } = useSearch();
@@ -92,8 +92,7 @@ const SearchTable = () => {
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/50">
-              <TableHead className="font-semibold">Surname</TableHead>
-              <TableHead className="font-semibold">Given Name</TableHead>
+              <TableHead className="font-semibold">Name</TableHead>
               <TableHead className="font-semibold">Status</TableHead>
               <TableHead className="font-semibold">Created</TableHead>
             </TableRow>
@@ -105,8 +104,7 @@ const SearchTable = () => {
                 onClick={() => setSelectedRecord(record)}
                 className="cursor-pointer hover:bg-muted/50 transition-colors animate-fade-in"
               >
-                <TableCell className="font-medium">{record.surname}</TableCell>
-                <TableCell>{record.givenName}</TableCell>
+                <TableCell className="font-medium">{record.names}</TableCell>
                 <TableCell>
                   <Badge variant="outline" className={statusColors[record.status]}>
                     {record.status === 'pending' && (

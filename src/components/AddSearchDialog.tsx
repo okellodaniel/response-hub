@@ -16,24 +16,35 @@ import LoadingSpinner from './LoadingSpinner';
 
 const AddSearchDialog = () => {
   const [open, setOpen] = useState(false);
-  const [surname, setSurname] = useState('');
-  const [givenName, setGivenName] = useState('');
-  const [otherName, setOtherName] = useState('');
+  const [names, setNames] = useState('');
+  const [error, setError] = useState('');
   const { addSearch, isSearching } = useSearch();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!surname.trim() || !givenName.trim()) return;
-    
-    await addSearch({ surname, givenName, otherName });
-    setSurname('');
-    setGivenName('');
-    setOtherName('');
+    setError('');
+
+    // Validate required field
+    if (!names.trim()) {
+      setError('Name is required');
+      return;
+    }
+
+    await addSearch({ names });
+    setNames('');
     setOpen(false);
   };
 
+  // Reset error when dialog opens/closes
+  const handleOpenChange = (newOpen: boolean) => {
+    setOpen(newOpen);
+    if (!newOpen) {
+      setError('');
+    }
+  };
+
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         <Button className="gap-2">
           <Plus className="w-4 h-4" />
@@ -48,35 +59,19 @@ const AddSearchDialog = () => {
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 mt-4">
+          {error && (
+            <div className="p-3 text-sm text-destructive bg-destructive/10 rounded-md animate-fade-in">
+              {error}
+            </div>
+          )}
           <div className="space-y-2">
-            <Label htmlFor="surname">Surname *</Label>
+            <Label htmlFor="names">Name *</Label>
             <Input
-              id="surname"
-              value={surname}
-              onChange={(e) => setSurname(e.target.value)}
-              placeholder="Enter surname"
+              id="names"
+              value={names}
+              onChange={(e) => setNames(e.target.value)}
+              placeholder="Enter name (e.g., Truss Liz)"
               required
-              disabled={isSearching}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="givenName">Given Name *</Label>
-            <Input
-              id="givenName"
-              value={givenName}
-              onChange={(e) => setGivenName(e.target.value)}
-              placeholder="Enter given name"
-              required
-              disabled={isSearching}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="otherName">Other Name</Label>
-            <Input
-              id="otherName"
-              value={otherName}
-              onChange={(e) => setOtherName(e.target.value)}
-              placeholder="Enter other name (optional)"
               disabled={isSearching}
             />
           </div>

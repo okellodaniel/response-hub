@@ -50,61 +50,54 @@ export const SearchProvider = ({ children }: { children: ReactNode }) => {
     try {
       // Convert to API request format
       const requestData = adverseNewsApi.convertSearchFormData(data);
+      console.log('Sending search request:', requestData);
 
-      // Call the API - it returns an array of search results
-      const searchResults = await adverseNewsApi.searchAdverseNews(requestData);
+      const searchResponse = await adverseNewsApi.searchAdverseNews(requestData);
+      console.log('Search response received:', searchResponse);
 
-      // Create a search record from the first result (if any)
-      if (searchResults && searchResults.length > 0) {
-        // For now, create a simple record from the search data
-        // In a real app, you might want to store all results
-        const newRecord: SearchRecord = {
-          id: crypto.randomUUID(),
-          ...data,
-          createdAt: new Date(),
-          status: 'completed', // The API returns results immediately
-        };
+      // Extract results from response
+      const results = searchResponse?.results || [];
 
-        setRecords(prev => [newRecord, ...prev]);
+      // Create a search record
+      const newRecord: SearchRecord = {
+        id: crypto.randomUUID(), // Temporary ID until we get a real one from backend
+        names: data.names,
+        createdAt: new Date(),
+        status: results.length > 0 ? 'completed' : 'completed', // Always completed for now
+      };
 
+      setRecords(prev => [newRecord, ...prev]);
+
+      if (results.length > 0) {
         toast({
           title: "Search Completed",
-          description: `Found ${searchResults.length} results for ${data.givenName} ${data.surname}.`,
+          description: `Found ${results.length} results for ${data.names}.`,
         });
-
-        // Refresh the records list to show the new search
-        setTimeout(() => {
-          refreshRecords();
-        }, 1000);
       } else {
-        // No results found
-        const newRecord: SearchRecord = {
-          id: crypto.randomUUID(),
-          ...data,
-          createdAt: new Date(),
-          status: 'completed',
-        };
-
-        setRecords(prev => [newRecord, ...prev]);
-
         toast({
           title: "Search Completed",
-          description: `No adverse news found for ${data.givenName} ${data.surname}.`,
+          description: `No adverse news found for ${data.names}.`,
         });
       }
 
+      // Refresh the records list to show the new search
+      setTimeout(() => {
+        refreshRecords();
+      }, 1000);
+
     } catch (error) {
       console.error('Failed to add search:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       toast({
-        title: "Error",
-        description: "Failed to perform search. Please try again.",
+        title: "Search Failed",
+        description: `Failed to perform search: ${errorMessage}. Please try again.`,
         variant: "destructive",
       });
 
       // Add a failed record for UI consistency
       const failedRecord: SearchRecord = {
         id: crypto.randomUUID(),
-        ...data,
+        names: data.names,
         createdAt: new Date(),
         status: 'error',
       };

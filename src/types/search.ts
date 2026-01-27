@@ -1,16 +1,12 @@
 export interface SearchRecord {
   id: string;
-  surname: string;
-  givenName: string;
-  otherName: string;
+  names: string;
   createdAt: Date;
   status: 'pending' | 'completed' | 'error';
 }
 
 export interface SearchFormData {
-  surname: string;
-  givenName: string;
-  otherName: string;
+  names: string;
 }
 
 export interface User {

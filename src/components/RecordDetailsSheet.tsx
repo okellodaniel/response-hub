@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { ZoomIn, ZoomOut, X, Maximize2 } from 'lucide-react';
+import { ZoomIn, ZoomOut, X, Maximize2, ChevronLeft, ChevronRight } from 'lucide-react';
 import {
   Sheet,
   SheetContent,
@@ -8,9 +8,10 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { useSearch } from '@/contexts/SearchContext';
 import { format } from 'date-fns';
-import { adverseNewsApi, type ApiSearchItem } from '@/integrations/adverse-news-api/client';
+import { adverseNewsApi, type ApiSearchItem, type SearchResultResponse } from '@/integrations/adverse-news-api/client';
 import LoadingSpinner from './LoadingSpinner';
 import {
   Dialog,
@@ -52,7 +53,8 @@ interface Summary {
 
 const RecordDetailsSheet = () => {
   const { selectedRecord, setSelectedRecord } = useSearch();
-  const [detailedRecord, setDetailedRecord] = useState<ApiSearchItem | null>(null);
+  const [searchResult, setSearchResult] = useState<SearchResultResponse | null>(null);
+  const [currentResultIndex, setCurrentResultIndex] = useState(0);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [imageError, setImageError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -65,13 +67,17 @@ const RecordDetailsSheet = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const currentImageUrlRef = useRef<string | null>(null);
 
+  const currentResult = searchResult?.results?.[currentResultIndex] || null;
+  const totalResults = searchResult?.results?.length || 0;
+
   useEffect(() => {
     if (selectedRecord) {
       const fetchDetails = async () => {
         setLoading(true);
+        setCurrentResultIndex(0);
         try {
           const data = await adverseNewsApi.getSearchResultById(selectedRecord.id);
-          setDetailedRecord(data);
+          setSearchResult(data);
         } catch (error) {
           console.error('Failed to fetch record details:', error);
         } finally {
@@ -80,18 +86,18 @@ const RecordDetailsSheet = () => {
       };
       fetchDetails();
     } else {
-      setDetailedRecord(null);
+      setSearchResult(null);
       setImageUrl(null);
     }
   }, [selectedRecord]);
 
   useEffect(() => {
-    if (detailedRecord?.image_id) {
+    if (currentResult?.image_id) {
       const fetchImage = async () => {
         setImageLoading(true);
         setImageError(null);
         try {
-          const url = await adverseNewsApi.getImageById(detailedRecord.image_id);
+          const url = await adverseNewsApi.getImageById(currentResult.image_id);
 
           // Clean up previous image URL if it exists
           if (currentImageUrlRef.current) {
@@ -122,7 +128,7 @@ const RecordDetailsSheet = () => {
       setImageUrl(null);
       setImageError(null);
     }
-  }, [detailedRecord]);
+  }, [currentResult]);
 
   // Cleanup image URL on component unmount
   useEffect(() => {
@@ -202,7 +208,7 @@ const RecordDetailsSheet = () => {
 
   return (
     <Sheet open={!!selectedRecord} onOpenChange={() => setSelectedRecord(null)}>
-      <SheetContent className="sm:max-w-2xl overflow-y-auto">
+      <SheetContent className="sm:max-w-4xl overflow-y-auto">
         <SheetHeader>
           <SheetTitle>Record Details</SheetTitle>
           <SheetDescription>
@@ -233,16 +239,8 @@ const RecordDetailsSheet = () => {
             <h4 className="font-semibold text-foreground">Search Parameters</h4>
             <div className="grid gap-4">
               <div className="p-4 border rounded-lg">
-                <span className="text-xs uppercase tracking-wide text-muted-foreground">Surname</span>
-                <p className="mt-1 font-medium">{selectedRecord.surname}</p>
-              </div>
-              <div className="p-4 border rounded-lg">
-                <span className="text-xs uppercase tracking-wide text-muted-foreground">Given Name</span>
-                <p className="mt-1 font-medium">{selectedRecord.givenName}</p>
-              </div>
-              <div className="p-4 border rounded-lg">
-                <span className="text-xs uppercase tracking-wide text-muted-foreground">Other Name</span>
-                <p className="mt-1 font-medium">{selectedRecord.otherName || '—'}</p>
+                <span className="text-xs uppercase tracking-wide text-muted-foreground">Name</span>
+                <p className="mt-1 font-medium">{selectedRecord.names}</p>
               </div>
             </div>
           </div>
@@ -251,19 +249,49 @@ const RecordDetailsSheet = () => {
             <div className="flex justify-center py-8">
               <LoadingSpinner size="lg" />
             </div>
-          ) : detailedRecord ? (
+          ) : searchResult && currentResult ? (
             <>
+              {/* Carousel Navigation */}
+              {totalResults > 1 && (
+                <div className="flex items-center justify-between p-4 border rounded-lg bg-muted/30">
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentResultIndex(prev => Math.max(0, prev - 1))}
+                      disabled={currentResultIndex === 0}
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </Button>
+                    <span className="text-sm font-medium">
+                      Article {currentResultIndex + 1} of {totalResults}
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentResultIndex(prev => Math.min(totalResults - 1, prev + 1))}
+                      disabled={currentResultIndex === totalResults - 1}
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </Button>
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    {currentResult.headline || 'No headline'}
+                  </div>
+                </div>
+              )}
+
               {/* Category & Adverse News Classification */}
               <div className="space-y-4">
                 <h4 className="font-semibold text-foreground">Adverse News Classification</h4>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="p-4 border rounded-lg">
                     <span className="text-xs uppercase tracking-wide text-muted-foreground">Category</span>
-                    <p className="mt-1 font-medium">{detailedRecord.category || '—'}</p>
+                    <p className="mt-1 font-medium">{currentResult.category || '—'}</p>
                   </div>
                   <div className="p-4 border rounded-lg">
                     <span className="text-xs uppercase tracking-wide text-muted-foreground">Severity Level</span>
-                    <p className="mt-1 font-medium">{detailedRecord.severity_level || '—'}</p>
+                    <p className="mt-1 font-medium">{currentResult.severity_level || '—'}</p>
                   </div>
                 </div>
               </div>
@@ -275,17 +303,17 @@ const RecordDetailsSheet = () => {
                   <div className="p-4 border rounded-lg">
                     <span className="text-xs uppercase tracking-wide text-muted-foreground">Newspaper Name</span>
                     <p className="mt-1 font-medium">
-                      {typeof detailedRecord.newspaper_metadata === 'object' && detailedRecord.newspaper_metadata !== null
-                        ? (detailedRecord.newspaper_metadata as NewspaperMetadata).newspaper_name || '—'
-                        : detailedRecord.newspaper_name || '—'}
+                      {typeof currentResult.newspaper_metadata === 'object' && currentResult.newspaper_metadata !== null
+                        ? (currentResult.newspaper_metadata as NewspaperMetadata).newspaper_name || '—'
+                        : currentResult.newspaper_name || '—'}
                     </p>
                   </div>
                   <div className="p-4 border rounded-lg">
                     <span className="text-xs uppercase tracking-wide text-muted-foreground">Date</span>
                     <p className="mt-1 font-medium">
-                      {typeof detailedRecord.newspaper_metadata === 'object' && detailedRecord.newspaper_metadata !== null
-                        ? (detailedRecord.newspaper_metadata as NewspaperMetadata).date || '—'
-                        : detailedRecord.created_at?.split('T')[0] || '—'}
+                      {typeof currentResult.newspaper_metadata === 'object' && currentResult.newspaper_metadata !== null
+                        ? (currentResult.newspaper_metadata as NewspaperMetadata).date || '—'
+                        : currentResult.created_at?.split('T')[0] || '—'}
                     </p>
                   </div>
                 </div>
@@ -295,17 +323,17 @@ const RecordDetailsSheet = () => {
               <div className="space-y-4">
                 <h4 className="font-semibold text-foreground">Article Summary</h4>
                 <div className="p-4 border rounded-lg">
-                  {detailedRecord.summary && typeof detailedRecord.summary === 'object' ? (
+                  {currentResult.summary && typeof currentResult.summary === 'object' ? (
                     <div className="space-y-4">
                       <div>
                         <span className="text-xs uppercase tracking-wide text-muted-foreground">Brief Summary</span>
-                        <p className="mt-1 font-medium">{(detailedRecord.summary as Summary).brief_summary || '—'}</p>
+                        <p className="mt-1 font-medium">{(currentResult.summary as Summary).brief_summary || '—'}</p>
                       </div>
-                      {(detailedRecord.summary as Summary).key_facts && (
+                      {(currentResult.summary as Summary).key_facts && (
                         <div>
                           <span className="text-xs uppercase tracking-wide text-muted-foreground">Key Facts</span>
                           <ul className="mt-1 list-disc list-inside space-y-1">
-                            {(detailedRecord.summary as Summary).key_facts!.map((fact, idx) => (
+                            {(currentResult.summary as Summary).key_facts!.map((fact, idx) => (
                               <li key={idx} className="text-sm">{fact}</li>
                             ))}
                           </ul>
@@ -313,7 +341,7 @@ const RecordDetailsSheet = () => {
                       )}
                       <div>
                         <span className="text-xs uppercase tracking-wide text-muted-foreground">Timeline</span>
-                        <p className="mt-1 font-medium">{(detailedRecord.summary as Summary).timeline || '—'}</p>
+                        <p className="mt-1 font-medium">{(currentResult.summary as Summary).timeline || '—'}</p>
                       </div>
                     </div>
                   ) : (
@@ -326,23 +354,23 @@ const RecordDetailsSheet = () => {
               <div className="space-y-4">
                 <h4 className="font-semibold text-foreground">Key Adverse Outcomes</h4>
                 <div className="p-4 border rounded-lg">
-                  {detailedRecord.key_adverse_outcomes && typeof detailedRecord.key_adverse_outcomes === 'object' ? (
+                  {currentResult.key_adverse_outcomes && typeof currentResult.key_adverse_outcomes === 'object' ? (
                     <div className="space-y-2">
                       <div>
                         <span className="text-xs uppercase tracking-wide text-muted-foreground">Primary Impact</span>
-                        <p className="mt-1 font-medium">{(detailedRecord.key_adverse_outcomes as KeyAdverseOutcomes).primary_impact || '—'}</p>
+                        <p className="mt-1 font-medium">{(currentResult.key_adverse_outcomes as KeyAdverseOutcomes).primary_impact || '—'}</p>
                       </div>
                       <div>
                         <span className="text-xs uppercase tracking-wide text-muted-foreground">Secondary Effects</span>
-                        <p className="mt-1 font-medium">{(detailedRecord.key_adverse_outcomes as KeyAdverseOutcomes).secondary_effects || '—'}</p>
+                        <p className="mt-1 font-medium">{(currentResult.key_adverse_outcomes as KeyAdverseOutcomes).secondary_effects || '—'}</p>
                       </div>
                       <div>
                         <span className="text-xs uppercase tracking-wide text-muted-foreground">Affected Parties</span>
-                        <p className="mt-1 font-medium">{(detailedRecord.key_adverse_outcomes as KeyAdverseOutcomes).affected_parties || '—'}</p>
+                        <p className="mt-1 font-medium">{(currentResult.key_adverse_outcomes as KeyAdverseOutcomes).affected_parties || '—'}</p>
                       </div>
                       <div>
                         <span className="text-xs uppercase tracking-wide text-muted-foreground">Legal Consequences</span>
-                        <p className="mt-1 font-medium">{(detailedRecord.key_adverse_outcomes as KeyAdverseOutcomes).legal_consequences || '—'}</p>
+                        <p className="mt-1 font-medium">{(currentResult.key_adverse_outcomes as KeyAdverseOutcomes).legal_consequences || '—'}</p>
                       </div>
                     </div>
                   ) : (
@@ -358,39 +386,39 @@ const RecordDetailsSheet = () => {
                   <div className="p-4 border rounded-lg">
                     <span className="text-xs uppercase tracking-wide text-muted-foreground">Reputational Risk</span>
                     <p className="mt-1 font-medium">
-                      {detailedRecord.risk_assessment && typeof detailedRecord.risk_assessment === 'object'
-                        ? (detailedRecord.risk_assessment as RiskAssessment).reputational_risk?.score || '—'
+                      {currentResult.risk_assessment && typeof currentResult.risk_assessment === 'object'
+                        ? (currentResult.risk_assessment as RiskAssessment).reputational_risk?.score || '—'
                         : '—'}
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      {detailedRecord.risk_assessment && typeof detailedRecord.risk_assessment === 'object'
-                        ? (detailedRecord.risk_assessment as RiskAssessment).reputational_risk?.reason || ''
+                      {currentResult.risk_assessment && typeof currentResult.risk_assessment === 'object'
+                        ? (currentResult.risk_assessment as RiskAssessment).reputational_risk?.reason || ''
                         : ''}
                     </p>
                   </div>
                   <div className="p-4 border rounded-lg">
                     <span className="text-xs uppercase tracking-wide text-muted-foreground">Operational Risk</span>
                     <p className="mt-1 font-medium">
-                      {detailedRecord.risk_assessment && typeof detailedRecord.risk_assessment === 'object'
-                        ? (detailedRecord.risk_assessment as RiskAssessment).operational_risk?.score || '—'
+                      {currentResult.risk_assessment && typeof currentResult.risk_assessment === 'object'
+                        ? (currentResult.risk_assessment as RiskAssessment).operational_risk?.score || '—'
                         : '—'}
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      {detailedRecord.risk_assessment && typeof detailedRecord.risk_assessment === 'object'
-                        ? (detailedRecord.risk_assessment as RiskAssessment).operational_risk?.reason || ''
+                      {currentResult.risk_assessment && typeof currentResult.risk_assessment === 'object'
+                        ? (currentResult.risk_assessment as RiskAssessment).operational_risk?.reason || ''
                         : ''}
                     </p>
                   </div>
                   <div className="p-4 border rounded-lg">
                     <span className="text-xs uppercase tracking-wide text-muted-foreground">Regulatory Risk</span>
                     <p className="mt-1 font-medium">
-                      {detailedRecord.risk_assessment && typeof detailedRecord.risk_assessment === 'object'
-                        ? (detailedRecord.risk_assessment as RiskAssessment).regulatory_risk?.score || '—'
+                      {currentResult.risk_assessment && typeof currentResult.risk_assessment === 'object'
+                        ? (currentResult.risk_assessment as RiskAssessment).regulatory_risk?.score || '—'
                         : '—'}
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      {detailedRecord.risk_assessment && typeof detailedRecord.risk_assessment === 'object'
-                        ? (detailedRecord.risk_assessment as RiskAssessment).regulatory_risk?.reason || ''
+                      {currentResult.risk_assessment && typeof currentResult.risk_assessment === 'object'
+                        ? (currentResult.risk_assessment as RiskAssessment).regulatory_risk?.reason || ''
                         : ''}
                     </p>
                   </div>
@@ -403,25 +431,25 @@ const RecordDetailsSheet = () => {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="p-4 border rounded-lg">
                     <span className="text-xs uppercase tracking-wide text-muted-foreground">Overall Risk Score</span>
-                    <p className="mt-1 font-medium">{detailedRecord.overall_risk_score ?? '—'}</p>
+                    <p className="mt-1 font-medium">{currentResult.overall_risk_score ?? '—'}</p>
                   </div>
                   <div className="p-4 border rounded-lg">
                     <span className="text-xs uppercase tracking-wide text-muted-foreground">Priority Level</span>
-                    <p className="mt-1 font-medium">{detailedRecord.priority_level || '—'}</p>
+                    <p className="mt-1 font-medium">{currentResult.priority_level || '—'}</p>
                   </div>
                   <div className="p-4 border rounded-lg">
                     <span className="text-xs uppercase tracking-wide text-muted-foreground">Reputational Risk Score</span>
                     <p className="mt-1 font-medium">
-                      {detailedRecord.risk_scoring && typeof detailedRecord.risk_scoring === 'object'
-                        ? (detailedRecord.risk_scoring as RiskScoring).reputational_risk_score ?? '—'
+                      {currentResult.risk_scoring && typeof currentResult.risk_scoring === 'object'
+                        ? (currentResult.risk_scoring as RiskScoring).reputational_risk_score ?? '—'
                         : '—'}
                     </p>
                   </div>
                   <div className="p-4 border rounded-lg">
                     <span className="text-xs uppercase tracking-wide text-muted-foreground">Legal Risk Score</span>
                     <p className="mt-1 font-medium">
-                      {detailedRecord.risk_scoring && typeof detailedRecord.risk_scoring === 'object'
-                        ? (detailedRecord.risk_scoring as RiskScoring).legal_risk_score ?? '—'
+                      {currentResult.risk_scoring && typeof currentResult.risk_scoring === 'object'
+                        ? (currentResult.risk_scoring as RiskScoring).legal_risk_score ?? '—'
                         : '—'}
                     </p>
                   </div>
