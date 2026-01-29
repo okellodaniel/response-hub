@@ -8,8 +8,3 @@ export interface SearchRecord {
 export interface SearchFormData {
   names: string;
 }
-
-export interface User {
-  username: string;
-  isAuthenticated: boolean;
-}

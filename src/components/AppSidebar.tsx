@@ -1,6 +1,6 @@
-import { Search, LayoutDashboard, Settings, LogOut, User } from 'lucide-react';
+import { Search, LayoutDashboard, Settings, LogOut } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
-import { useAuth } from '@/contexts/AuthContext';
+import { useUser, useClerk } from '@clerk/clerk-react';
 import {
   Sidebar,
   SidebarContent,
@@ -15,7 +15,7 @@ import {
   useSidebar,
 } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 const navItems = [
   { title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard },
@@ -25,7 +25,8 @@ const navItems = [
 
 export function AppSidebar() {
   const { state } = useSidebar();
-  const { user, logout } = useAuth();
+  const { user } = useUser();
+  const { signOut } = useClerk();
   const collapsed = state === 'collapsed';
 
   return (
@@ -71,21 +72,22 @@ export function AppSidebar() {
       <SidebarFooter className="p-4">
         <div className="flex items-center gap-3 p-2 rounded-lg bg-sidebar-accent/50">
           <Avatar className="w-8 h-8">
+            <AvatarImage src={user?.imageUrl} alt={user?.fullName ?? ''} />
             <AvatarFallback className="bg-primary text-primary-foreground text-xs">
-              {user?.username?.charAt(0).toUpperCase() || 'U'}
+              {user?.firstName?.charAt(0).toUpperCase() || 'U'}
             </AvatarFallback>
           </Avatar>
           {!collapsed && (
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-sidebar-foreground truncate">
-                {user?.username}
+                {user?.fullName || user?.primaryEmailAddress?.emailAddress}
               </p>
             </div>
           )}
           <Button
             variant="ghost"
             size="icon"
-            onClick={logout}
+            onClick={() => signOut({ redirectUrl: '/' })}
             className="text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent"
           >
             <LogOut className="w-4 h-4" />
