@@ -7,9 +7,11 @@ app = 'response-hub'
 primary_region = 'jnb'
 
 [build]
+  [build.args]
+    VITE_ADVERSE_NEWS_API_URL = ""
 
 [http_service]
-  internal_port = 8080
+  internal_port = 80
   force_https = true
   auto_stop_machines = 'stop'
   auto_start_machines = true

@@ -3,10 +3,10 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
-import { useAuth } from '@/contexts/AuthContext';
+import { useUser } from '@clerk/clerk-react';
 
 const Settings = () => {
-  const { user } = useAuth();
+  const { user } = useUser();
 
   return (
     <div className="space-y-6 animate-fade-in max-w-2xl">
@@ -24,12 +24,12 @@ const Settings = () => {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="username">Username</Label>
-            <Input id="username" value={user?.username || ''} disabled />
+            <Label htmlFor="fullName">Full Name</Label>
+            <Input id="fullName" value={user?.fullName || ''} disabled />
           </div>
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
-            <Input id="email" type="email" placeholder="user@example.com" />
+            <Input id="email" type="email" value={user?.primaryEmailAddress?.emailAddress || ''} disabled />
           </div>
           <Button>Save Changes</Button>
         </CardContent>
