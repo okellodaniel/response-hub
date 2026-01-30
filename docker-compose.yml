@@ -7,5 +7,12 @@ services:
         - VITE_ADVERSE_NEWS_API_URL=${VITE_ADVERSE_NEWS_API_URL}
         - VITE_CLERK_PUBLISHABLE_KEY=${VITE_CLERK_PUBLISHABLE_KEY}
     ports:
-      - "3000:80"
+      - "3000:80" 
     restart: unless-stopped
+    networks:
+      - adverse-news-network 
+
+networks:
+  adverse-news-network:
+    external: true
+    name: adverse_news_api_app-network 
