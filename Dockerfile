@@ -14,9 +14,11 @@ COPY . .
 
 # Build arguments for environment variables
 ARG VITE_ADVERSE_NEWS_API_URL
+ARG VITE_CLERK_PUBLISHABLE_KEY
 
 # Set environment variables for build
 ENV VITE_ADVERSE_NEWS_API_URL=$VITE_ADVERSE_NEWS_API_URL
+ENV VITE_CLERK_PUBLISHABLE_KEY=$VITE_CLERK_PUBLISHABLE_KEY
 
 # Build the application
 RUN npm run build

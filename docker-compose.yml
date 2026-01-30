@@ -5,6 +5,7 @@ services:
       dockerfile: Dockerfile
       args:
         - VITE_ADVERSE_NEWS_API_URL=${VITE_ADVERSE_NEWS_API_URL}
+        - VITE_CLERK_PUBLISHABLE_KEY=${VITE_CLERK_PUBLISHABLE_KEY}
     ports:
       - "3000:80"
     restart: unless-stopped
