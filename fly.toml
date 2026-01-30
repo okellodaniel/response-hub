@@ -7,8 +7,9 @@ app = 'response-hub'
 primary_region = 'jnb'
 
 [build]
+  dockerfile = "Dockerfile"
   [build.args]
-    VITE_ADVERSE_NEWS_API_URL = ""
+    VITE_ADVERSE_NEWS_API_URL = "https://adversenews-api.botlobi.com"
 
 [http_service]
   internal_port = 80
