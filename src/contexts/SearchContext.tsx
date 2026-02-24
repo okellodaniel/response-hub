@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, ReactNode, useEffect } from
 import { SearchRecord, SearchFormData } from '@/types/search';
 import { toast } from '@/hooks/use-toast';
 import { adverseNewsApi } from '@/integrations/adverse-news-api/client';
+import { useAuth } from '@clerk/clerk-react';
 
 interface SearchContextType {
   records: SearchRecord[];
@@ -16,15 +17,18 @@ interface SearchContextType {
 const SearchContext = createContext<SearchContextType | undefined>(undefined);
 
 export const SearchProvider = ({ children }: { children: ReactNode }) => {
+  const { isSignedIn, isLoaded } = useAuth();
   const [records, setRecords] = useState<SearchRecord[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState<SearchRecord | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Load initial records
+  // Load records only when user is authenticated
   useEffect(() => {
-    refreshRecords();
-  }, []);
+    if (isLoaded && isSignedIn) {
+      refreshRecords();
+    }
+  }, [isLoaded, isSignedIn]);
 
   const refreshRecords = async (): Promise<void> => {
     setIsLoading(true);

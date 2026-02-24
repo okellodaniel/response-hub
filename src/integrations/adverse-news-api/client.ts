@@ -126,7 +126,7 @@ export interface PaginatedSearchesResponse {
     total_pages: number;
 }
 
-// Interface for search result wrapper (GET /adversenews/searches/{id})
+// Interface for search result wrapper (GET /adverse-news/searches/{id})
 export interface SearchResultResponse {
     query: string;
     names: string;
@@ -137,7 +137,7 @@ export interface SearchResultResponse {
     results: ApiSearchItem[];
 }
 
-// New interface for the updated search API response (POST /adversenews/searches)
+// New interface for the updated search API response (POST /adverse-news/searches/)
 export interface AdverseNewsSearchResponseV2 {
     query: string;
     names: string;
@@ -147,6 +147,127 @@ export interface AdverseNewsSearchResponseV2 {
     timestamp: string;
     results: ApiSearchItem[];
 }
+
+// ─── General News Interfaces ──────────────────────────────────────────────────
+
+export interface GeneralNewsSearchRequest {
+    names: string;
+}
+
+export interface GeneralNewsSearchResultSummary {
+    id: string;
+    image_id: string;
+    headline: string | null;
+    primary_topic: string | null;
+    overall_sentiment: string | null;
+    created_at: string | null;
+}
+
+export interface GeneralNewsSearchResponse {
+    query: string;
+    search_id: string;
+    total_hits: number;
+    search_duration_ms: number;
+    timestamp: string | null;
+    results: GeneralNewsSearchResultSummary[];
+}
+
+export interface GeneralNewsSearchListItem {
+    id: string;
+    query: string;
+    results_count: number;
+    top_result_id: string | null;
+    result_ids: string[] | null;
+    search_duration_ms: number | null;
+    created_at: string | null;
+}
+
+export interface PaginatedGeneralNewsSearchResponse {
+    total: number;
+    page: number;
+    limit: number;
+    total_pages: number;
+    items: GeneralNewsSearchListItem[];
+}
+
+export interface GeneralNewsDetailResponse {
+    id: string;
+    image_id: string;
+    search_query: string | null;
+    headline: string | null;
+    newspaper_name: string | null;
+    overall_sentiment: string | null;
+    primary_topic: string | null;
+    news_type: string | null;
+    geographic_scope: string | null;
+    created_at: string | null;
+    updated_at: string | null;
+    newspaper_metadata: {
+        publication_name: string | null;
+        publication_date: string | null;
+        newspaper_name: string | null;
+        date: string | null;
+        page_number: string | null;
+        section: string | null;
+    } | null;
+    article_identification: {
+        headline: string | null;
+        subheadline: string | null;
+        sub_headlines: string | null;
+    } | null;
+    article_classification: {
+        primary_topic: string | null;
+        secondary_topics: string[] | null;
+        overall_sentiment: string | null;
+        sentiment_explanation: string | null;
+    } | null;
+    key_information: {
+        primary_subject: string | null;
+        key_events: string[] | null;
+        key_facts: string[] | null;
+        financial_figures: string[] | null;
+        dates_mentioned: string[] | null;
+        locations_mentioned: string[] | null;
+        timeline: string | null;
+    } | null;
+    outcomes_and_implications: {
+        stated_outcomes: string | null;
+        projected_outcomes: string | null;
+        affected_parties: string | null;
+        stakeholder_reactions: string | null;
+    } | null;
+    news_significance: {
+        news_type: string | null;
+        geographic_scope: string | null;
+        impact_scope: string | null;
+        timeliness: string | null;
+    } | null;
+    general_summary: {
+        brief_summary: string | null;
+        key_takeaways: string[] | null;
+    } | null;
+    individuals_mentioned: Array<{
+        name: string | null;
+        surname: string | null;
+        givenName: string | null;
+        otherName: string | null;
+        role: string | null;
+        sentiment_context: string | null;
+        reason_for_mention: string | null;
+    }> | null;
+    relevance_to_query: { relevance_score: number | null; relevance_explanation: string | null } | null;
+}
+
+export interface GeneralNewsSearchDetailResponse {
+    query: string;
+    search_id: string;
+    total_hits: number;
+    search_duration_ms: number | null;
+    timestamp: string | null;
+    results: GeneralNewsDetailResponse[];
+}
+
+// ─── API Client ───────────────────────────────────────────────────────────────
 
 class AdverseNewsApiClient {
     private baseUrl: string;
@@ -166,7 +287,7 @@ class AdverseNewsApiClient {
                 'Content-Type': 'application/json',
                 ...options.headers,
             },
-            mode: 'cors', // Enable CORS
+            mode: 'cors',
         });
 
         if (!response.ok) {
@@ -176,10 +297,12 @@ class AdverseNewsApiClient {
         return response.json();
     }
 
-    // Search adverse news - returns search response with metadata and results
+    // ─── Adverse News ──────────────────────────────────────────────────────────
+
+    // Search adverse news
     async searchAdverseNews(data: AdverseNewsSearchRequest): Promise<AdverseNewsSearchResponseV2> {
         try {
-            const response = await this.request<AdverseNewsSearchResponseV2>('/adversenews/searches', {
+            const response = await this.request<AdverseNewsSearchResponseV2>('/adverse-news/searches/', {
                 method: 'POST',
                 body: JSON.stringify(data),
             });
@@ -191,7 +314,7 @@ class AdverseNewsApiClient {
         }
     }
 
-    // Get list of searches
+    // Get list of adverse news searches
     async getSearches(params?: {
         names?: string;
         page?: number;
@@ -203,19 +326,71 @@ class AdverseNewsApiClient {
         if (params?.limit) queryParams.append('limit', params.limit.toString());
 
         const queryString = queryParams.toString();
-        const endpoint = `/adversenews/searches${queryString ? `?${queryString}` : ''}`;
+        const endpoint = `/adverse-news/searches/${queryString ? `?${queryString}` : ''}`;
 
         return this.request<PaginatedSearchesResponse>(endpoint, {
             method: 'GET',
         });
     }
 
-    // Get search result by ID
+    // Get adverse news search result by ID
     async getSearchResultById(id: string): Promise<SearchResultResponse> {
-        return this.request<SearchResultResponse>(`/adversenews/searches/${id}`, {
+        return this.request<SearchResultResponse>(`/adverse-news/searches/${id}`, {
             method: 'GET',
         });
     }
+
+    // ─── General News ──────────────────────────────────────────────────────────
+
+    // Search general news
+    async searchGeneralNews(data: GeneralNewsSearchRequest): Promise<GeneralNewsSearchResponse> {
+        try {
+            const response = await this.request<GeneralNewsSearchResponse>('/general-news/search', {
+                method: 'POST',
+                body: JSON.stringify(data),
+            });
+            console.log('General news search response:', response);
+            return response;
+        } catch (error) {
+            console.error('General news search error:', error);
+            throw error;
+        }
+    }
+
+    // Get list of general news searches
+    async getGeneralNewsSearches(params?: {
+        query?: string;
+        page?: number;
+        limit?: number;
+    }): Promise<PaginatedGeneralNewsSearchResponse> {
+        const queryParams = new URLSearchParams();
+        if (params?.query) queryParams.append('query', params.query);
+        if (params?.page) queryParams.append('page', params.page.toString());
+        if (params?.limit) queryParams.append('limit', params.limit.toString());
+
+        const queryString = queryParams.toString();
+        const endpoint = `/general-news/searches${queryString ? `?${queryString}` : ''}`;
+
+        return this.request<PaginatedGeneralNewsSearchResponse>(endpoint, {
+            method: 'GET',
+        });
+    }
+
+    // Get general news search by ID
+    async getGeneralNewsSearchById(id: string): Promise<GeneralNewsSearchDetailResponse> {
+        return this.request<GeneralNewsSearchDetailResponse>(`/general-news/searches/${id}`, {
+            method: 'GET',
+        });
+    }
+
+    // Get a single general news record by ID
+    async getGeneralNewsById(id: string): Promise<GeneralNewsDetailResponse> {
+        return this.request<GeneralNewsDetailResponse>(`/general-news/${id}`, {
+            method: 'GET',
+        });
+    }
+
+    // ─── Images ────────────────────────────────────────────────────────────────
 
     // Get image by ID
     async getImageById(imageId: string): Promise<string> {
@@ -233,6 +408,8 @@ class AdverseNewsApiClient {
         const blob = await response.blob();
         return URL.createObjectURL(blob);
     }
+
+    // ─── Conversion Helpers ────────────────────────────────────────────────────
 
     // Convert SearchFormData to AdverseNewsSearchRequest
     convertSearchFormData(data: SearchFormData): AdverseNewsSearchRequest {
@@ -282,7 +459,6 @@ class AdverseNewsApiClient {
         if (!item.adverse_news_found) {
             status = 'pending';
         }
-        // No error detection from SearchSummary, keep as completed
 
         return {
             id: item.id,
@@ -324,9 +500,6 @@ class AdverseNewsApiClient {
 
     // Convert ApiSearchItem to AdverseNewsResult array for detailed view
     convertToAdverseNewsResults(item: ApiSearchItem): AdverseNewsResult[] {
-        // For now, create a single result from the main item
-        // In a real implementation, you might parse the raw_response for multiple articles
-
         let summaryText = 'No summary available';
         if (typeof item.summary === 'string') {
             summaryText = item.summary;
@@ -344,7 +517,7 @@ class AdverseNewsApiClient {
             date: item.created_at.split('T')[0],
             summary: summaryText,
             relevance_score: relevanceScore,
-            url: '#', // No URL in API response
+            url: '#',
         }];
     }
 }

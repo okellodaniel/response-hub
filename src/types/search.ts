@@ -8,3 +8,10 @@ export interface SearchRecord {
 export interface SearchFormData {
   names: string;
 }
+
+export interface GeneralNewsRecord {
+  id: string;
+  query: string;
+  resultsCount: number;
+  createdAt: Date;
+}

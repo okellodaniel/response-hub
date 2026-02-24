@@ -1,4 +1,4 @@
-import { Search, LayoutDashboard, Settings, LogOut } from 'lucide-react';
+import { Search, LayoutDashboard, Settings, LogOut, Newspaper } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useUser, useClerk } from '@clerk/clerk-react';
 import {
@@ -19,7 +19,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 const navItems = [
   { title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard },
-  { title: 'Searches', url: '/dashboard/searches', icon: Search },
+  { title: 'Adverse News', url: '/dashboard/searches', icon: Search },
+  { title: 'General News', url: '/dashboard/general-news', icon: Newspaper },
   { title: 'Settings', url: '/dashboard/settings', icon: Settings },
 ];
 
