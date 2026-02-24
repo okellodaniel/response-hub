@@ -115,6 +115,10 @@
 }
 
 @layer utilities {
+  .progress-bar-fill {
+    width: var(--progress-width, 0%);
+  }
+
   .gradient-primary {
     background: var(--gradient-primary);
   }
