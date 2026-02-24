@@ -34,8 +34,8 @@ export function AppSidebar() {
     <Sidebar className="border-r-0">
       <SidebarHeader className="p-4">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg gradient-primary flex items-center justify-center shadow-glow">
-            <Search className="w-4 h-4 text-primary-foreground" />
+          <div className="w-8 h-8 rounded-lg bg-white/10 border border-white/15 flex items-center justify-center">
+            <Search className="w-4 h-4 text-sidebar-foreground" />
           </div>
           {!collapsed && (
             <span className="font-semibold text-sidebar-foreground">SearchHub</span>
